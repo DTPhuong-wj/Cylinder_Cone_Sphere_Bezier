@@ -13,17 +13,18 @@ bool wireframeMode = true;
 bool mushroom = true;
 
 float camX = 0.0f;
+float camY = 0.0f;
 float camZ = 0.0f;
 
 float zoom = 1.0f;
 
 // ---------------- Cylinder Wireframe ----------------
 Point3D P0(float u, float radius){
-    return { radius*cosf(u), 0.0f, radius*sinf(u) };
+    return { radius*cosf(u), radius*sinf(u) , 0.0f};
 }
 
 Point3D P1(float u, float radius, float height){
-    return { radius*cosf(u), height, radius*sinf(u) };
+    return { radius*cosf(u), radius*sinf(u), height};
 }
 
 void DrawCylinderWireframe(float radius, float height, int slices, int stacks){
@@ -60,8 +61,34 @@ void DrawCylinderWireframe(float radius, float height, int slices, int stacks){
             };
             glVertex3f(p.x,p.y,p.z);
         }
+
         glEnd();
     }
+
+    // 3. Vẽ đáy (bottom cap wireframe với tâm)
+    glBegin(GL_LINES);
+    Point3D center{0.0f, 0.0f, 0.0f}; // tâm đáy
+    for(int i=0;i<slices;i++){
+        float u = i * du;
+        Point3D p = P0(u,radius); // điểm trên vòng tròn
+        // vẽ đường từ tâm ra đỉnh
+        glVertex3f(center.x, center.y, center.z);
+        glVertex3f(p.x, p.y, p.z);
+    }
+    glEnd();
+
+    // 4. Vẽ nắp (top cap wireframe với tâm)
+    glBegin(GL_LINES);
+    Point3D topCenter{0.0f, 0.0f, height}; // tâm nắp
+    for(int i=0;i<slices;i++){
+        float u = i * du;
+        Point3D p1 = P1(u,radius,height); // điểm trên vòng tròn
+        // vẽ đường từ tâm ra đỉnh
+        glVertex3f(topCenter.x, topCenter.y, topCenter.z);
+        glVertex3f(p1.x, p1.y, p1.z);
+    }
+    glEnd();
+
 }
 
 void DrawCylinder(float radius, float height, int slices, int stacks){
@@ -94,14 +121,14 @@ void DrawSphereWireframe(float r, int slices, int stacks){
         glBegin(GL_LINE_STRIP);
         for(int j=0;j<=stacks;j++){
             float phi=j*2*M_PI/stacks;
-            glVertex3f(r*sin(t0)*cos(phi), r*cos(t0), r*sin(t0)*sin(phi));
+            glVertex3f(r*sin(t0)*cos(phi), r*sin(t0)*sin(phi), r*cos(t0));
         }
         glEnd();
 
         glBegin(GL_LINE_STRIP);
         for(int j=0;j<=stacks;j++){
             float phi=j*2*M_PI/stacks;
-            glVertex3f(r*sin(t1)*cos(phi), r*cos(t1), r*sin(t1)*sin(phi));
+            glVertex3f(r*sin(t1)*cos(phi), r*sin(t1)*sin(phi), r*cos(t1));
         }
         glEnd();
     }
@@ -117,8 +144,8 @@ void DrawSphere(float r, int slices, int stacks){
         for(int j=0;j<=stacks;j++){
             float phi=j*2*M_PI/stacks;
 
-            glVertex3f(r*sin(t0)*cos(phi), r*cos(t0), r*sin(t0)*sin(phi));
-            glVertex3f(r*sin(t1)*cos(phi), r*cos(t1), r*sin(t1)*sin(phi));
+            glVertex3f(r*sin(t0)*cos(phi), r*sin(t0)*sin(phi), r*cos(t0));
+            glVertex3f(r*sin(t1)*cos(phi), r*sin(t1)*sin(phi), r*cos(t1));
         }
         glEnd();
     }
@@ -131,7 +158,7 @@ void DrawEllipsoidWire(float a, float b, float c, int slices, int stacks){
         glBegin(GL_LINE_LOOP);
         for(int j=0;j<=stacks;j++){
             float p = j * 2*M_PI/stacks;
-            glVertex3f(a*sin(t)*cos(p), b*cos(t), c*sin(t)*sin(p));
+            glVertex3f(a*sin(t)*cos(p), c*sin(t)*sin(p), b*cos(t));
         }
         glEnd();
     }
@@ -146,8 +173,8 @@ void DrawEllipsoid(float a, float b, float c, int slices, int stacks){
         glBegin(GL_QUAD_STRIP);
         for(int j=0;j<=stacks;j++){
             float p=j*2*M_PI/stacks;
-            glVertex3f(a*sin(t0)*cos(p), b*cos(t0), c*sin(t0)*sin(p));
-            glVertex3f(a*sin(t1)*cos(p), b*cos(t1), c*sin(t1)*sin(p));
+            glVertex3f(a*sin(t0)*cos(p), c*sin(t0)*sin(p), b*cos(t0));
+            glVertex3f(a*sin(t1)*cos(p), c*sin(t1)*sin(p), b*cos(t1));
         }
         glEnd();
     }
@@ -249,7 +276,7 @@ void DrawLeafScene(float x, float y, float z){
 // ---------------- Mushroom ----------------
 void DrawMushroom(float x,float y,float z){
     glPushMatrix();
-    glTranslatef(x,y,z);
+    glTranslatef(0.5f, 0.5f, 0.0f);
 
     // Thân
     glColor3f(0.8f,0.5f,0.3f);
@@ -257,9 +284,9 @@ void DrawMushroom(float x,float y,float z){
     else              DrawCylinder(0.2f,1.0f,36,10);
 
     // Mũ
-    glTranslatef(0,1.0f,0);
+    glTranslatef(0, 0, 1.0f);
     glPushMatrix();
-    glScalef(1,0.5f,1);
+    glScalef(1,1, 0.5f); 
     glColor3f(1,0,0);
 
     if(wireframeMode) DrawEllipsoidWire(0.6f,0.3f,0.6f,18,9);
@@ -270,16 +297,16 @@ void DrawMushroom(float x,float y,float z){
     // Chấm trắng
     glColor3f(1,1,1);
     std::vector<Point3D> dots = {
-        {0.2f,0.25f,0.0f}, {-0.2f,0.22f,0.1f},
-        {0.0f,0.23f,-0.2f}, {0.1f,0.21f,0.3f},
-        {-0.3f,0.24f,-0.1f}
+        {0.2f,0.15f,0.0f}, {-0.2f,0.15f,0.1f},
+        {0.0f,0.15f,-0.2f}, {0.1f,0.15f,0.3f},
+        {-0.3f,0.15f,-0.1f}
     };
 
     for(auto& d : dots){
         glPushMatrix();
         glTranslatef(d.x,d.y,d.z);
-        if(wireframeMode) DrawSphereWireframe(0.05f,8,8);
-        else              DrawSphere(0.05f,12,12);
+        if(wireframeMode) DrawSphereWireframe(0.06f,8,8);
+        else              DrawSphere(0.06f,12,12);
         glPopMatrix();
     }
 
@@ -292,6 +319,7 @@ void DrawAxes(float len=2){
     glColor3f(1,0,0); glVertex3f(0,0,0); glVertex3f(len,0,0);
     glColor3f(0,1,0); glVertex3f(0,0,0); glVertex3f(0,len,0);
     glColor3f(0,0,1); glVertex3f(0,0,0); glVertex3f(0,0,len);
+
     glEnd();
 }
 
@@ -300,9 +328,9 @@ void display(){
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    gluLookAt(4*zoom,2*zoom,4*zoom, 0,0.5,0, 0,1,0);
+    gluLookAt(4*zoom,2*zoom,4*zoom, 0,0.5,0, 0,0,1);
 
-    glTranslatef(camX, 0, camZ);
+    glTranslatef(camX, camY, camZ);
 
     glRotatef(angleX,1,0,0);
     glRotatef(angleY,0,1,0);
