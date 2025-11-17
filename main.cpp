@@ -259,16 +259,30 @@ void DrawLeafScene(float x, float y, float z){
         { {-0.15f,1.0f,0.05f}, {0,1.0f,0.05f}, {0,1.0f,-0.05f}, {0.15f,1.0f,-0.05f} }
     };
 
-    // Nghiêng lá ngang theo trục X
     glPushMatrix();
+    glTranslatef(x,y,z);
     glRotatef(-45,1,0,0);  // lá nghiêng -45° quanh X
-    DrawBezierSurfaceWireframe(leafCtrl,25,25);
 
-    // 2. Bézier Curve – gân lá
+    // 2. Vẽ wireframe mặt Bézier
+    DrawBezierSurfaceWireframe(leafCtrl, 25, 25);
+
+    // 3. Vẽ các điểm điều khiển
+    glColor3f(1,0,0); // đỏ
+    for(int i=0;i<leafCtrl.size();i++){
+        for(int j=0;j<leafCtrl[i].size();j++){
+            glPushMatrix();
+            glTranslatef(leafCtrl[i][j].x, leafCtrl[i][j].y, leafCtrl[i][j].z);
+            DrawSphere(0.03f, 8, 8); // hiển thị điểm điều khiển
+            glPopMatrix();
+        }
+    }
+
+    // 4. Bézier Curve – gân lá
     std::vector<Point3D> midVein = {
         {0,0,0}, {0,0.3,0.05}, {0,0.6,-0.05}, {0,1.0,0}
     };
     DrawBezierCurve(midVein,50);
+
     glPopMatrix();
 }
 
