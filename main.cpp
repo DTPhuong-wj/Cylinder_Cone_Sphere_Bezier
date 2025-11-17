@@ -10,6 +10,7 @@ struct Point3D { float x, y, z; };
 // ---------------- GLOBAL ----------------
 float angleX=0.0f, angleY=0.0f, angleZ=0.0f;
 bool wireframeMode = true;
+bool mushroom = true;
 
 float camX = 0.0f;
 float camZ = 0.0f;
@@ -152,6 +153,99 @@ void DrawEllipsoid(float a, float b, float c, int slices, int stacks){
     }
 }
 
+// Tổ hợp
+int C(int n,int i){
+    if(i==0||i==n) return 1;
+    int res=1;
+    for(int j=1;j<=i;j++) res=res*(n-j+1)/j;
+    return res;
+}
+
+// Bézier Curve
+Point3D BezierCurvePoint(const std::vector<Point3D>& ctrl,float t){
+    int n = ctrl.size()-1;
+    Point3D p{0,0,0};
+    for(int i=0;i<=n;i++){
+        float b = C(n,i) * pow(1-t,n-i) * pow(t,i);
+        p.x += ctrl[i].x * b;
+        p.y += ctrl[i].y * b;
+        p.z += ctrl[i].z * b;
+    }
+    return p;
+}
+
+void DrawBezierCurve(const std::vector<Point3D>& ctrl,int steps){
+    glLineWidth(3);  // gân lá dày hơn
+    glColor3f(0.55f,0.27f,0.07f); // nâu
+    glBegin(GL_LINE_STRIP);
+    for(int i=0;i<=steps;i++){
+        float t=i/(float)steps;
+        Point3D p = BezierCurvePoint(ctrl,t);
+        glVertex3f(p.x,p.y,p.z);
+    }
+    glEnd();
+    glLineWidth(1);
+}
+
+// Bézier Surface
+Point3D BezierSurfacePoint(const std::vector<std::vector<Point3D>>& ctrl,float u,float v){
+    int m = ctrl.size()-1;
+    int n = ctrl[0].size()-1;
+    Point3D p{0,0,0};
+    for(int i=0;i<=m;i++){
+        for(int j=0;j<=n;j++){
+            float b = C(m,i)*C(n,j) * pow(1-u,m-i)*pow(u,i) * pow(1-v,n-j)*pow(v,j);
+            p.x += ctrl[i][j].x * b;
+            p.y += ctrl[i][j].y * b;
+            p.z += ctrl[i][j].z * b;
+        }
+    }
+    return p;
+}
+
+void DrawBezierSurfaceWireframe(const std::vector<std::vector<Point3D>>& ctrl,int slices,int stacks){
+    glColor3f(0.2f,0.8f,0.2f); // xanh nhạt
+    for(int i=0;i<slices;i++){
+        float u0 = i/(float)slices;
+        float u1 = (i+1)/(float)slices;
+        glBegin(GL_LINE_STRIP);
+        for(int j=0;j<=stacks;j++){
+            float v = j/(float)stacks;
+            Point3D p0 = BezierSurfacePoint(ctrl,u0,v);
+            Point3D p1 = BezierSurfacePoint(ctrl,u1,v);
+            glVertex3f(p0.x,p0.y,p0.z);
+            glVertex3f(p1.x,p1.y,p1.z);
+        }
+        glEnd();
+    }
+}
+
+// Scene: lá nghiêng ngang
+float angle=0.0f;
+
+void DrawLeafScene(float x, float y, float z){
+    // 1. Bézier Surface – lá nghiêng nhiều
+    std::vector<std::vector<Point3D>> leafCtrl = {
+        { {-0.2f,0,0}, {-0.15f,0.05f,0.05f}, {0.15f,0.05f,-0.05f}, {0.2f,0,0} },
+        { {-0.3f,0.3f,0.1f}, {-0.15f,0.4f,0.15f}, {0.15f,0.4f,-0.15f}, {0.3f,0.3f,-0.1f} },
+        { {-0.25f,0.6f,0.15f}, {-0.1f,0.65f,0.05f}, {0.1f,0.65f,-0.05f}, {0.25f,0.6f,-0.15f} },
+        { {-0.15f,1.0f,0.05f}, {0,1.0f,0.05f}, {0,1.0f,-0.05f}, {0.15f,1.0f,-0.05f} }
+    };
+
+    // Nghiêng lá ngang theo trục X
+    glPushMatrix();
+    glRotatef(-45,1,0,0);  // lá nghiêng -45° quanh X
+    DrawBezierSurfaceWireframe(leafCtrl,25,25);
+
+    // 2. Bézier Curve – gân lá
+    std::vector<Point3D> midVein = {
+        {0,0,0}, {0,0.3,0.05}, {0,0.6,-0.05}, {0,1.0,0}
+    };
+    DrawBezierCurve(midVein,50);
+    glPopMatrix();
+}
+
+
 // ---------------- Mushroom ----------------
 void DrawMushroom(float x,float y,float z){
     glPushMatrix();
@@ -215,7 +309,9 @@ void display(){
     glRotatef(angleZ,0,0,1);
 
     DrawAxes();
-    DrawMushroom(1,0,1);
+
+    if(mushroom) DrawMushroom(1,0,1);
+    else         DrawLeafScene(1,0,1);
 
     glutSwapBuffers();
 }
@@ -224,6 +320,7 @@ void display(){
 void keyboard(unsigned char key,int,int){
     switch(key){
         case 't': case 'T': wireframeMode = !wireframeMode; break;
+        case 'm': case 'M': mushroom = !mushroom; break;
 
         case 'x': angleX+=5; break;
         case 'X': angleX-=5; break;
