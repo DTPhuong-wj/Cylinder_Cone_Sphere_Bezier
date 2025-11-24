@@ -1,4 +1,3 @@
-
 #include <GL/freeglut.h>
 #include <vector>
 #include <cmath>
@@ -10,14 +9,13 @@ const float PI = 3.14159265358979323846f;
 enum Obj { OBJ_CYLINDER=1, OBJ_CONE, OBJ_SPHERE, OBJ_TORUS, OBJ_BEZIER_CURVE, OBJ_BEZIER_SURF };
 int currentObj = OBJ_CYLINDER;
 bool wireframe = false;
-bool autoRotate = true;
-bool rotX=false, rotY=true, rotZ=false;
+bool autoRotate = false; // không xoay tự động
 float angleX=0.0f, angleY=0.0f, angleZ=0.0f;
 
 // Mesh storage (positions, indices)
-std::vector<float> g_vertices;            // x,y,z triplets
-std::vector<unsigned int> g_indices;      // triangles
-std::vector<float> g_curve;               // for bezier curve points (x,y,z)
+std::vector<float> g_vertices;            
+std::vector<unsigned int> g_indices;      
+std::vector<float> g_curve;               
 int sphereStacks = 30, sphereSlices = 30;
 
 // Bezier control points (curve)
@@ -50,15 +48,13 @@ inline void addTri(unsigned int a,unsigned int b,unsigned int c){
 void genCylinder(float radius, float height, int slices){
     clearMesh();
     float half = height*0.5f;
-    // side rings (two vertices per slice)
     for(int i=0;i<=slices;i++){
         float a = 2.0f*PI*i / slices;
         float x = radius * cosf(a);
         float y = radius * sinf(a);
-        addVertex(x,y,-half); // bottom ring
-        addVertex(x,y, half); // top ring
+        addVertex(x,y,-half); 
+        addVertex(x,y, half); 
     }
-    // triangles for side
     for(int i=0;i<slices;i++){
         unsigned int p0 = i*2;
         unsigned int p1 = p0+1;
@@ -67,7 +63,6 @@ void genCylinder(float radius, float height, int slices){
         addTri(p0,p1,p2);
         addTri(p1,p3,p2);
     }
-    // bottom cap center
     unsigned int bottomCenter = g_vertices.size()/3;
     addVertex(0,0,-half);
     for(int i=0;i<slices;i++){
@@ -75,7 +70,6 @@ void genCylinder(float radius, float height, int slices){
         unsigned int vnext = ((i+1)%slices)*2;
         addTri(bottomCenter, vnext, v);
     }
-    // top cap center
     unsigned int topCenter = g_vertices.size()/3;
     addVertex(0,0,half);
     for(int i=0;i<slices;i++){
@@ -88,18 +82,14 @@ void genCylinder(float radius, float height, int slices){
 void genCone(float radius, float height, int slices){
     clearMesh();
     float half = height*0.5f;
-    // apex
-    addVertex(0,0,half); // index 0
-    // base ring
+    addVertex(0,0,half); // apex
     for(int i=0;i<=slices;i++){
         float a = 2.0f*PI*i/slices;
         addVertex(radius*cosf(a), radius*sinf(a), -half);
     }
-    // sides
     for(int i=0;i<slices;i++){
         addTri(0, i+1, i+2);
     }
-    // base center
     unsigned int baseCenter = g_vertices.size()/3;
     addVertex(0,0,-half);
     for(int i=0;i<slices;i++){
@@ -112,11 +102,11 @@ void genCone(float radius, float height, int slices){
 void genSphere(float R, int stacks, int slices){
     clearMesh();
     for(int i=0;i<=stacks;i++){
-        float phi = PI * i / stacks; // 0..pi
+        float phi = PI * i / stacks;
         float z = R * cosf(phi);
         float r = R * sinf(phi);
         for(int j=0;j<=slices;j++){
-            float theta = 2.0f*PI * j / slices; // 0..2pi
+            float theta = 2.0f*PI * j / slices;
             float x = r * cosf(theta);
             float y = r * sinf(theta);
             addVertex(x,y,z);
@@ -158,7 +148,6 @@ void genTorus(float R,float r,int ns,int nt){
 
 // Bezier helpers
 float cubicBernstein(int i, float t){
-    // i = 0..3
     float u = 1.0f - t;
     if(i==0) return u*u*u;
     if(i==1) return 3.0f * u*u * t;
@@ -184,15 +173,14 @@ void genBezierCurve(int segments = 100){
 void prepareSurfControl(){
     for(int i=0;i<4;i++){
         for(int j=0;j<4;j++){
-            surfP[i][j][0] = (i-1.5f);            // x
-            surfP[i][j][1] = 0.5f * sinf(i*j);   // y - small variation
-            surfP[i][j][2] = (j-1.5f);            // z
+            surfP[i][j][0] = (i-1.5f);
+            surfP[i][j][1] = 0.5f * sinf(i*j);
+            surfP[i][j][2] = (j-1.5f);
         }
     }
 }
 void genBezierSurface(int res = 30){
     clearMesh();
-    // sample surface
     for(int iu=0; iu<=res; ++iu){
         float u = iu/(float)res;
         for(int iv=0; iv<=res; ++iv){
@@ -210,7 +198,6 @@ void genBezierSurface(int res = 30){
             addVertex(px,py,pz);
         }
     }
-    // indices
     for(int i=0;i<res;i++){
         for(int j=0;j<res;j++){
             unsigned int a = i*(res+1) + j;
@@ -233,25 +220,20 @@ void generateObject(){
     }
 }
 
-// --- Drawing functions (fixed-function immediate-style for simplicity) ---
+// --- Drawing functions ---
 void drawAxis(){
     glLineWidth(3.0f);
     glBegin(GL_LINES);
-    // X - red
-    glColor3f(1,0,0);
-    glVertex3f(0,0,0); glVertex3f(1.5f,0,0);
-    // Y - green
-    glColor3f(0,1,0);
-    glVertex3f(0,0,0); glVertex3f(0,1.5f,0);
-    // Z - blue
-    glColor3f(0,0,1);
-    glVertex3f(0,0,0); glVertex3f(0,0,1.5f);
+    glColor3f(1,0,0); glVertex3f(0,0,0); glVertex3f(1.5f,0,0);
+    glColor3f(0,1,0); glVertex3f(0,0,0); glVertex3f(0,1.5f,0);
+    glColor3f(0,0,1); glVertex3f(0,0,0); glVertex3f(0,0,1.5f);
     glEnd();
 }
 
 void drawMesh(){
+    // --- BEZIER CURVE ---
     if(currentObj == OBJ_BEZIER_CURVE){
-        // draw curve as line strip (white)
+        // Vẽ đường cong
         glColor3f(1,1,0.2f);
         glLineWidth(2.0f);
         glBegin(GL_LINE_STRIP);
@@ -259,20 +241,98 @@ void drawMesh(){
             glVertex3f(g_curve[i], g_curve[i+1], g_curve[i+2]);
         }
         glEnd();
+
+        // Vẽ điểm điều khiển (đỏ)
+        glColor3f(1,0,0);
+        glPointSize(8.0f);
+        glBegin(GL_POINTS);
+        for(int i=0;i<4;i++){
+            glVertex3f(bezP[i][0], bezP[i][1], bezP[i][2]);
+        }
+        glEnd();
+
+        // Vẽ dây nối các điểm điều khiển (xám)
+        glColor3f(0.5f,0.5f,0.5f);
+        glLineWidth(1.0f);
+        glBegin(GL_LINE_STRIP);
+        for(int i=0;i<4;i++){
+            glVertex3f(bezP[i][0], bezP[i][1], bezP[i][2]);
+        }
+        glEnd();
+
         return;
     }
 
-    // draw triangles
-    glColor3f(0.85f,0.85f,0.85f);
+    // --- BEZIER SURFACE ---
+    if(currentObj == OBJ_BEZIER_SURF){
+        // Vẽ mesh surface (tam giác)
+        glColor3f(0.85f,0.85f,0.85f);
+        if(!g_indices.empty()){
+            glBegin(GL_TRIANGLES);
+            for(size_t i=0;i<g_indices.size(); i+=3){
+                unsigned int a = g_indices[i];
+                unsigned int b = g_indices[i+1];
+                unsigned int c = g_indices[i+2];
+                glVertex3f(g_vertices[a*3+0], g_vertices[a*3+1], g_vertices[a*3+2]);
+                glVertex3f(g_vertices[b*3+0], g_vertices[b*3+1], g_vertices[b*3+2]);
+                glVertex3f(g_vertices[c*3+0], g_vertices[c*3+1], g_vertices[c*3+2]);
+            }
+            glEnd();
+        }
+
+        // Vẽ điểm điều khiển (đỏ)
+        glColor3f(1,0,0);
+        glPointSize(6.0f);
+        glBegin(GL_POINTS);
+        for(int i=0;i<4;i++){
+            for(int j=0;j<4;j++){
+                glVertex3f(surfP[i][j][0], surfP[i][j][1], surfP[i][j][2]);
+            }
+        }
+        glEnd();
+
+        // Vẽ dây nối theo hàng (xám)
+        glColor3f(0.5f,0.5f,0.5f);
+        glLineWidth(1.0f);
+        for(int i=0;i<4;i++){
+            glBegin(GL_LINE_STRIP);
+            for(int j=0;j<4;j++){
+                glVertex3f(surfP[i][j][0], surfP[i][j][1], surfP[i][j][2]);
+            }
+            glEnd();
+        }
+        // Vẽ dây nối theo cột (xám)
+        for(int j=0;j<4;j++){
+            glBegin(GL_LINE_STRIP);
+            for(int i=0;i<4;i++){
+                glVertex3f(surfP[i][j][0], surfP[i][j][1], surfP[i][j][2]);
+            }
+            glEnd();
+        }
+
+        return;
+    }
+
+    // --- MESH THÔNG THƯỜNG ---
+    switch(currentObj){
+        case OBJ_CYLINDER: glColor3f(1.0f, 0.5f, 0.0f); break; // cam
+        case OBJ_CONE:     glColor3f(0.8f, 0.0f, 0.0f); break; // đỏ
+        case OBJ_SPHERE:   glColor3f(0.0f, 0.7f, 0.2f); break; // xanh lá
+        case OBJ_TORUS:    glColor3f(0.0f, 0.5f, 1.0f); break; // xanh dương
+        default:           glColor3f(0.85f,0.85f,0.85f); break;
+    }
+
     if(g_indices.empty()){
-        // fallback: draw as points
+        // fallback: draw points
         glPointSize(3.0f);
         glBegin(GL_POINTS);
-        for(size_t i=0;i<g_vertices.size(); i+=3) glVertex3f(g_vertices[i],g_vertices[i+1],g_vertices[i+2]);
+        for(size_t i=0;i<g_vertices.size(); i+=3)
+            glVertex3f(g_vertices[i],g_vertices[i+1],g_vertices[i+2]);
         glEnd();
         return;
     }
 
+    // Vẽ mesh tam giác
     glBegin(GL_TRIANGLES);
     for(size_t i=0;i<g_indices.size(); i+=3){
         unsigned int a = g_indices[i];
@@ -285,20 +345,18 @@ void drawMesh(){
     glEnd();
 }
 
+
 // --- GLUT callbacks ---
 void display(){
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // camera
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     gluLookAt(4.0, 3.0, 4.0,   0,0,0,   0,1,0);
 
-    // Draw axis (not affected by polygon mode)
     glDisable(GL_LIGHTING);
     drawAxis();
 
-    // object transform
     glPushMatrix();
     glRotatef(angleX,1,0,0);
     glRotatef(angleY,0,1,0);
@@ -307,9 +365,10 @@ void display(){
     if(wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    // optionally enable simple lighting for nicer appearance
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
     float lightpos[4] = {3.0f,4.0f,3.0f,1.0f};
     glLightfv(GL_LIGHT0, GL_POSITION, lightpos);
     float ambient[] = {0.2f,0.2f,0.2f,1.0f};
@@ -326,15 +385,7 @@ void display(){
 }
 
 void idle(){
-    // update rotation
-    if(autoRotate){
-        if(rotX) angleX += 0.3f;
-        if(rotY) angleY += 0.5f;
-        if(rotZ) angleZ += 0.2f;
-        if(angleX>360) angleX -= 360;
-        if(angleY>360) angleY -= 360;
-        if(angleZ>360) angleZ -= 360;
-    }
+    // Chỉ repaint, không xoay tự động
     glutPostRedisplay();
 }
 
@@ -355,41 +406,37 @@ void keyboard(unsigned char key,int x,int y){
         case '5': currentObj = OBJ_BEZIER_CURVE; generateObject(); break;
         case '6': currentObj = OBJ_BEZIER_SURF;  generateObject(); break;
         case 'w': case 'W': wireframe = !wireframe; break;
-        case ' ': autoRotate = !autoRotate; break;
-        case 'x': case 'X': rotX = !rotX; break;
-        case 'y': case 'Y': rotY = !rotY; break;
-        case 'z': case 'Z': rotZ = !rotZ; break;
+        case 'x': angleX += 5.0f; break;  // xoay bằng phím
+        case 'X': angleX -= 5.0f; break;
+        case 'y': angleY += 5.0f; break;
+        case 'Y': angleY -= 5.0f; break;
+        case 'z': angleZ += 5.0f; break;
+        case 'Z': angleZ -= 5.0f; break;
         case 27: exit(0); break; // ESC
     }
 }
 
 int main(int argc,char** argv){
-    // Init GLUT
     glutInit(&argc,argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
     glutInitWindowSize(1280,720);
-    glutCreateWindow("LAB05 - Curves & Surfaces (fixed-function)");
+    glutCreateWindow("LAB05 - Curves & Surfaces (keyboard rotate)");
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_NORMALIZE);
     glShadeModel(GL_SMOOTH);
 
-    // initial surface control
     prepareSurfControl();
-
-    // generate first object
     generateObject();
 
-    // callbacks
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboard);
     glutIdleFunc(idle);
 
-    // background
-    glClearColor(0.12f, 0.12f, 0.12f, 1.0f);
+    glClearColor(0.12f,0.12f,0.12f,1.0f);
 
-    printf("Controls:\n 1..6: select object\n W: wireframe toggle\n Space: toggle auto-rotate\n X/Y/Z: toggle rotation axes\n ESC: exit\n");
+    printf("Controls:\n 1..6: select object\n W: wireframe toggle\n X/x, Y/y, Z/z: rotate axes\n ESC: exit\n");
 
     glutMainLoop();
     return 0;
